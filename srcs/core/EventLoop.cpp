@@ -17,10 +17,8 @@
 
 volatile sig_atomic_t stopServer = 0;
 
-static void signalHandler(int signum)
-{
-	if (signum == SIGINT)
-	{
+static void signalHandler(int signum) {
+	if (signum == SIGINT) {
 		std::cout << "\nShutting down the server gracefully...\n"
 				  << std::endl;
 		stopServer = 1;
@@ -29,11 +27,9 @@ static void signalHandler(int signum)
 
 EventLoop::EventLoop() { _pollEntries.reserve(1024); }
 
-EventLoop::~EventLoop()
-{
+EventLoop::~EventLoop() {
 
-	for (size_t i = 0; i < _pollEntries.size(); ++i)
-	{
+	for (size_t i = 0; i < _pollEntries.size(); ++i) {
 		if (_pollEntries[i].conn)
 			delete _pollEntries[i].conn;
 		if (_pollEntries[i].pfd.fd >= 0)
@@ -42,8 +38,7 @@ EventLoop::~EventLoop()
 	}
 }
 
-void EventLoop::addListeningSocket(const Socket *socket)
-{
+void EventLoop::addListeningSocket(const Socket *socket) {
 	struct pollfd pfd;
 	pfd.fd = socket->getFd();
 	pfd.events = POLLIN;
@@ -54,24 +49,16 @@ void EventLoop::addListeningSocket(const Socket *socket)
 	entry.conn = NULL;
 	entry.socketAddr = socket->getAddr();
 	entry.port = ntohs(socket->getAddr().sin_port);
-
-	std::cout << "Raw port value (network byte order): " << socket->getAddr().sin_port << std::endl;
-	std::cout << "Converted port value (host byte order): " << ntohs(socket->getAddr().sin_port) << std::endl;
-
 	_pollEntries.push_back(entry);
 }
 
-void EventLoop::run()
-{
+void EventLoop::run() {
 
-	while (true)
-	{
+	while (true) {
 
 		signal(SIGINT, signalHandler);
-		if (stopServer)
-		{
-			while (!_pollEntries.empty())
-			{
+		if (stopServer) {
+			while (!_pollEntries.empty()) {
 				closeConnection(_pollEntries.back());
 				_pollEntries.pop_back();
 			}
@@ -81,8 +68,7 @@ void EventLoop::run()
 		std::vector<struct pollfd> pfdArray;
 		std::vector<size_t> indexMap;
 		pfdArray.reserve(_pollEntries.size());
-		for (size_t i = 0; i < _pollEntries.size(); ++i)
-		{
+		for (size_t i = 0; i < _pollEntries.size(); ++i) {
 
 			if (_pollEntries[i].pfd.fd >= 0)
 			{
@@ -91,11 +77,9 @@ void EventLoop::run()
 			}
 		}
 
-		if (!pfdArray.empty())
-		{
+		if (!pfdArray.empty()) {
 			int errorCode = poll(&pfdArray[0], pfdArray.size(), 5000);
-			if (errorCode < 0)
-			{
+			if (errorCode < 0) {
 				if (errno == EINTR)
 				{
 					break;
@@ -109,29 +93,24 @@ void EventLoop::run()
 
 		std::vector<PollEntry> newClients;
 
-		for (size_t i = 0; i < _pollEntries.size(); ++i)
-		{
+		for (size_t i = 0; i < _pollEntries.size(); ++i) {
 			PollEntry &entry = _pollEntries[i];
 
-			if (entry.pfd.revents & (POLLHUP | POLLERR | POLLNVAL))
-			{
-				std::cout << "Strange error, but client was brutally disconected :(" << std::endl;
+			if (entry.pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
+				std::cout << "Strange error, but client was brutally and tragically disconected :(" << std::endl;
 				closeConnection(entry);
 				entry.pfd.fd = -1;
 				continue;
 			}
 
-			if (entry.pfd.revents & POLLIN)
-			{
-				if (entry.conn == NULL)
-				{
+			if (entry.pfd.revents & POLLIN) {
+				if (entry.conn == NULL) {
 
 					socklen_t addrLen = sizeof(entry.socketAddr);
 					int clientFd = accept(entry.pfd.fd, (sockaddr *)&entry.socketAddr, &addrLen);
 					if (clientFd < 0)
 						std::cerr << "Failed to accept connection..." << std::endl;
-					else
-					{
+					else {
 						int flags = fcntl(clientFd, F_GETFL, 0);
 						fcntl(clientFd, F_SETFL, flags | O_NONBLOCK);
 
@@ -150,20 +129,16 @@ void EventLoop::run()
 						newClients.push_back(clientEntry);
 						std::cout << "New client accepted: fd " << clientFd << std::endl;
 					}
-				}
-				else
-				{
 
-					if (!entry.conn->readRequest())
-					{
+				} else {
+
+					if (!entry.conn->readRequest()) {
 						closeConnection(entry);
 						entry.pfd.fd = -1;
 					}
 					else if (entry.conn->isRequestComplete())
 					{
 						// std::cout << entry.conn->getReadBuffer() << std::endl;
-						std::cout << "---------------------------------------------" << std::endl;
-						std::cout << entry.port << std::endl;
 						entry.conn->setWriteBuffer(HttpResponse::request_and_response(entry.conn->getReadBuffer(), entry.port));
 						entry.conn->setReadBuffer(""); // clear buffer for the next read operation.
 						entry.pfd.events = POLLOUT;
@@ -171,11 +146,8 @@ void EventLoop::run()
 				}
 			}
 
-			if (entry.pfd.revents & POLLOUT)
-			{
-
-				if (entry.conn && !entry.conn->writeResponse())
-				{
+			if (entry.pfd.revents & POLLOUT) {
+				if (entry.conn && !entry.conn->writeResponse()) {
 
 					closeConnection(entry);
 					entry.pfd.fd = -1;
@@ -202,8 +174,8 @@ void EventLoop::run()
 	}
 }
 
-void EventLoop::closeConnection(PollEntry &entry)
-{
+void EventLoop::closeConnection(PollEntry &entry) {
+
 	if (entry.pfd.fd >= 0)
 		close(entry.pfd.fd);
 	if (entry.conn)
