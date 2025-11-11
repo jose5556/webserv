@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cereais <cereais@student.42.fr>            +#+  +:+       +#+        */
+/*   By: joseoliv <joseoliv@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 18:30:29 by cereais           #+#    #+#             */
-/*   Updated: 2025/10/19 18:55:20 by cereais          ###   ########.fr       */
+/*   Updated: 2025/11/11 12:30:45 by joseoliv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,7 @@ Server::Server(const std::vector<ServerConfig>& configs,
 			   const std::vector<Socket*>& sockets)
 	: _configs(configs), _listeningSockets(sockets)
 {
-	std::cout << "Server initialized with " 
+	std::cout << "\nServer initialized with " 
 			  << _configs.size() << " configs and " 
 			  << _listeningSockets.size() << " sockets: " << std::endl;
 	for (size_t i = 0; i < _listeningSockets.size(); i++) {

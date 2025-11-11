@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Connection.cpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cereais <cereais@student.42.fr>            +#+  +:+       +#+        */
+/*   By: joseoliv <joseoliv@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/10/02 20:10:16 by cereais           #+#    #+#             */
-/*   Updated: 2025/10/28 20:39:37 by cereais          ###   ########.fr       */
+/*   Updated: 2025/11/11 11:36:55 by joseoliv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,7 +23,7 @@ Connection::~Connection() {
 }
 
 Connection::Connection(const Connection &copy) {
-	
+
 	this->_fd = copy._fd;
 	this->_readBuffer = copy._readBuffer;
 	this->_writeBuffer = copy._writeBuffer;
@@ -51,7 +51,7 @@ bool	Connection::readRequest() {
 }
 
 bool	Connection::writeResponse() {
-	
+
 	ssize_t	bytesWritten;
 
 	if (_writeBuffer.empty())
