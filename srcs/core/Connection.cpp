@@ -29,6 +29,7 @@ Connection::Connection(const Connection &copy) {
 	this->_writeBuffer = copy._writeBuffer;
 }
 
+
 bool	Connection::readRequest() {
 
 	char	buffer[4096];

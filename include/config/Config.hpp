@@ -18,8 +18,9 @@
 #include <typeinfo>
 
 #include <fcntl.h>		// TODO Ver se ha melhor
-#include <sys/socket.h> // TODO Ver se ha melhor
-#include <netinet/in.h> // TODO Ver se ha melhor
+#include <sys/socket.h>	// TODO Ver se ha melhor
+#include <netinet/in.h>	// TODO Ver se ha melhor
+#include <sys/stat.h>	// TODO Ver se ha melhor
 
 #include <arpa/inet.h>
 #include <cstring>
@@ -37,7 +38,7 @@ public:
 	Config &operator = (const Config &orig);
 	virtual ~Config();
 
-	char**							getEnv() const; // maybe TODO considerar "const char *const *getEnv() const
+	char**							getEnv() const; // consider "const char *const *getEnv() const
 	size_t							getServNum() const;
 	ServerConfig const				&getServerConfig(uint16_t port) const;
 	std::vector<ServerConfig> const	&getServerConfigVector() const;
@@ -79,10 +80,11 @@ private:
 	bool				hasServerConfigPort(uint16_t port);
 };
 
-bool	isDelim(char c);
-const std::string	trim_whitespace(const std::string& str);
-std::string		formatPath(const std::string& str);
 std::string 	capitalize(std::string str);
+bool			isDelim(char c);
+const std::string	trim_whitespace(const std::string& str);
+void			validatePath(const std::string &path, bool cgi_pass);
+std::string		formatFakePath(const std::string& str);
 
 class InputException: public std::exception
 {

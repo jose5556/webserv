@@ -11,13 +11,17 @@
 /* ************************************************************************** */
 
 #include "config/color.hpp"
+#include "http/HttpParser.hpp"
+#include <cerrno>
+#include <cstdlib>
 #include <iostream>
+#include <sstream>
 #include <stdlib.h>
+#include <string>
 #include <unistd.h>
-#include "config/LocationConfig.hpp"
-#include "core/Server.hpp"
 #include <http/Http_throw.hpp>
 #include "http/HttpParser.hpp"
+#include "http/HttpResponse.hpp"
 #include <config/color.hpp>
 #include <config/LocationConfig.hpp>
 #include <core/Server.hpp>
@@ -29,6 +33,10 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <sys/wait.h>
+#include <stdio.h>
+#include <fcntl.h>
+
+
 
 Cgi::Cgi(){}
 Cgi::~Cgi(){}
@@ -56,7 +64,6 @@ std::string Cgi::chek_program_pach(std::string porgram)
 			_path.push_back(path);	
 		}	
 	}
-	T_MSG("pache size " << _path.size(),BWHITE );
 	struct dirent *name_dir;
 	std::string name_program_dir;
 	for(int i=0;(int)_path.size() > i; i++)
@@ -77,7 +84,6 @@ std::string Cgi::chek_program_pach(std::string porgram)
 			if(name_program_dir == porgram)
 			{
 
-				HTTP_MSG("path for porgram use is" <<_path[i] <<" " <<name_program_dir);
 				 if (access((_path[i] +"/"+name_program_dir).c_str(), X_OK) == 0)
 				 {
 					closedir(dir);
@@ -103,79 +109,128 @@ void Cgi::create_env( char **env,std::vector<char *> env_request)
 	int i = 0;
 	_envs = env_request;
 
-	for (int e = 0; e < (int)env_request.size();e++) 
-	{
-		HTTP_MSG(env_request[e]);
-	}
 	while (env[i] != NULL)
 	{
 		_envs.push_back(env[i]);
 
 		i++;
 	} 
-
+	for (int e = 0; e < (int)env_request.size();e++) 
+	{
+		//HTTP_MSG(env_request[e]);
+	}
 }
 
-std::string Cgi::execute(std::string _request, std::string porgram )
+int Cgi::save_chunk_fd(std::string str)
+{
+	static int fd=  -1;
+	static int body = 0;
+
+
+	
+	std::stringstream port;
+	port << HttpParser::_port;
+	_file_name =  "/tmp/saida_"+ port.str() + ".txt";
+	if( HttpParser::_is_chunk == HTTP_CONTENT)
+	{
+		if(body == 1)
+		{
+			body = 0;
+			fd = open(_file_name.c_str(),O_RDWR | O_CREAT , 0644);
+			write(fd,str.c_str(),str.size()-4);
+			close(fd);
+			return (open(_file_name.c_str(),O_RDWR | O_CREAT , 0644));
+		}
+		if(body == 0)
+		{ 
+			body = 1;
+			return(-1);
+		}
+	}
+
+	if(HttpParser::_is_chunk == HTTP_CHUNKS)
+	{
+		if(str.empty())
+		{
+			return (-1);
+		}
+		if(str == "0\r\n\r\n")
+			return (open(_file_name.c_str(),O_RDWR | O_CREAT , 0644));
+		fd = open(_file_name.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644);
+		if(fd == -1)
+			throw Not_found_404(); //TODO nao e este o error  
+
+		int size =  str.find('\r');
+		if(size == (int)std::string::npos)
+			throw Not_found_404(); //TODO nao e este o error  
+		int bits;
+		std::string nb = str.substr(0,size);
+		std::string al = str.substr(size+2,str.rfind('\r'));
+		std::stringstream ss(str);
+		ss >> bits;
+		if(ss.fail())
+			throw Not_found_404(); //TODO nao e este o error  
+		write(fd,al.c_str(),bits);
+		close(fd);
+	}
+	return -1;
+}
+
+std::string Cgi::execute(std::string _request, std::string porgram)
 {
 	int pid ;
-	int fd_in[2];
+	int fd_in;
 	int fd_out[2];
 	int status,read_bits;
 	char buffer[1024];
-	std::vector<char *> v;
-
-v.push_back(const_cast<char*>(porgram.c_str()));          // script
-v.push_back(NULL);
-
-
-	std::string response = "";
+	std::string  response = "";
+	char **end = NULL;
 	
-	if(pipe(fd_in) == -1)
-		exit(1);
+	int fd =-1;
+	
+	if((fd = Cgi::save_chunk_fd(_request)) == -1)
+	{
+		return "";
+	}
+	fd_in = fd;	
+	HttpResponse::_new_request = false;
 	if(pipe(fd_out) == -1)
-		exit(1);
-	
-	HTTP_MSG(porgram);
+		exit(1);	
+	_envs.push_back(NULL);	
+ 	std::cout.flush();
 	pid = fork();
 	if(pid == -1)
 		exit(1);	
 
 	if(pid == 0)
-	{
-	
-		dup2(fd_in[0],0);
-		dup2(fd_out[1],1);	
-		close(fd_in[1]);
-		close(fd_out[0]);
+	{	
 
-		T_MSG(porgram.c_str(), RED);
-		int i  = execve(porgram.c_str(),v.data(),_envs.data());
+		dup2(fd_in,0);
+		dup2(fd_out[1],1);	
+		close(fd_in);
+		int i  = execve( porgram.c_str(),end,_envs.data());
 		HTTP_MSG("merda = " << i)
-		exit(1);
+		perror("execve");
+		exit(33);
 	}
 	else
 	{
-		close(fd_in[0]);
 		close(fd_out[1]);
-		write(fd_in[1],_request.c_str(),_request.size());
-		close(fd_in[1]);
+		close(fd_in);
 		while ((read_bits = read(fd_out[0],buffer,1024)) > 0)
 		{
 			response.append(buffer,read_bits);
 		}
+		response.append("\r\n\r\n");
 		close(fd_out[0]);
 		waitpid(pid, &status, 0);
-
 		if (WIFEXITED(status)) {
    		 int exit_code = WEXITSTATUS(status);
-    		std::cout << "CGI exited with code: " << exit_code << std::endl;
-		if(exit_code != 0) // TODO change this value for 0 
+    		std::cout << "CGI exited with code: " << exit_code << response << std::endl;
+		std::remove(_file_name.c_str());
+		if(exit_code == 33) // TODO change this value for 0 
 			throw Not_found_404();
-
-		}
-		std::cout << response << std::endl;
- 
-	}	
+		} 
+	}
 	return response;
 }

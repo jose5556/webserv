@@ -13,13 +13,12 @@ SRCS_ALL :=	\
 		$(SRC_DIR)/core/Connection.cpp $(SRC_DIR)/core/EventLoop.cpp $(SRC_DIR)/core/Server.cpp \
 		$(SRC_DIR)/http/HttpParser.cpp $(SRC_DIR)/http/HttpResponse.cpp $(SRC_DIR)/http/HttpParser_throw.cpp \
 		$(SRC_DIR)/net/Socket.cpp \
-		$(SRC_DIR)/main.cpp \
 
 
 
 SRCS := $(SRC_DIR)/main.cpp  $(SRCS_ALL)
 
-SRCS_T := ./test/main.cpp  ./test/test_http_requet.cpp 
+SRCS_T := ./test/main.cpp  
 
 # Convert source files to object files
 OBJS := $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))

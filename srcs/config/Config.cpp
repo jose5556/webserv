@@ -6,7 +6,51 @@
 // | HELPER FUNCTIONS
 // |----------------------
 
-std::string	formatPath(const std::string& str)
+void validatePath(const std::string &path, bool cgi_pass)
+{
+
+	return ;
+	if (path == "")
+	{
+		return ;
+	}
+
+	// PARA TESTAR, COMENTAR AQUI
+	if (path.find("//") != std::string::npos)
+	{
+		throw Config::BadConfigException("Invalid path name: ", path);
+	}
+
+	struct stat info;
+
+	if (stat(path.c_str(), &info) != 0)
+	{
+		throw Config::BadConfigException("Path does not exist: ", path);
+	}
+
+	if (!cgi_pass && !S_ISDIR(info.st_mode))
+	{
+		throw Config::BadConfigException("Path is not a directory: ", path);
+	}
+
+	if (!cgi_pass && S_ISLNK(info.st_mode))
+	{
+		throw Config::BadConfigException("Path must not be a symbolic link: ", path);
+	}
+
+	if (access(path.c_str(), R_OK) != 0 || access(path.c_str(), W_OK) != 0)
+	{
+		throw Config::BadConfigException("Existing directory in config file lacks adequate permissions: ", path);
+	}
+
+	if (cgi_pass && access(path.c_str(), X_OK) != 0)
+	{
+		throw Config::BadConfigException("File for cgi_pass lacks execution permission: ", path);
+	}
+	// PARA TESTAR, COMENTAR ATÉ AQUI
+}
+
+std::string	formatFakePath(const std::string& str)
 {
 	if (str.empty() || str == "/")
 	{
@@ -19,14 +63,14 @@ std::string	formatPath(const std::string& str)
 	{
 		tmp.erase(str.size() - 1);
 	}
-	//if (str.compare(0, 2, "./") == 0)
-	//{
-	//	tmp.erase(0, 1);
-	//}
-	//else if (str[0] != '/')
-	//{
-	//	tmp = "/" + tmp;
-	//}
+	if (str.compare(0, 2, "./") == 0)
+	{
+		tmp.erase(0, 1);
+	}
+	else if (str[0] != '/')
+	{
+		tmp = "/" + tmp;
+	}
 
 	return (tmp);
 }
@@ -189,7 +233,7 @@ size_t	Config::getServNum() const
 	return(this->_servers.size());
 }
 
-char**	Config::getEnv() const // maybe TODO considerar "const char *const *Config::getEnv() const"
+char**	Config::getEnv() const // consider "const char *const *Config::getEnv() const"
 {
 	return(this->_env);
 }

@@ -1,142 +1,55 @@
-
-<!-- public/index.html -->
-<!doctype html>
-<html lang="pt">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>File Manager</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Site com Download do Próprio Index</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; padding: 2rem; max-width: 720px; margin: auto; }
+    header { margin-bottom: 1.5rem; }
+    .card { background:#f8f9fa; border:1px solid #e9ecef; padding:1rem; border-radius:8px; }
+    .actions { margin-top: 1rem; display:flex; gap:.5rem; flex-wrap:wrap; }
+    .btn {
+      display:inline-block; padding:.6rem .9rem; background:#007bff; color:white; text-decoration:none;
+      border-radius:6px; font-weight:600;
+    }
+    .btn.secondary { background:#6c757d; }
+    pre { background:#fff; padding:.75rem; border-radius:6px; overflow:auto; border:1px solid #e9ecef; }
+    footer { margin-top:2rem; color:#666; font-size:.9rem; }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <h1>Gestor de Ficheiros</h1>
+  <header>
+    <h1>Site estático — Descarregar o próprio index</h1>
+    <p>Este exemplo mostra como permitir que o utilizador faça download do ficheiro <code>index.html</code> da própria página.</p>
+  </header>
 
-    <section class="upload">
-      <h2>Enviar ficheiro</h2>
-      <form id="uploadForm">
-        <input type="file" id="fileInput" name="file" />
-        <button type="submit">Enviar (POST)</button>
-      </form>
+  <main class="card">
+    <p>Opções:</p>
+    <div class="actions">
+      <!-- Link com atributo download: sugere ao browser que faça download em vez de abrir -->
+      <a class="btn" href="index.html" download="index.html">Descarregar este index</a>
 
-      <h3>Substituir ficheiro existente</h3>
-      <form id="replaceForm">
-        <input type="text" id="targetName" placeholder="Nome do ficheiro a substituir (ex: doc.txt)" />
-        <input type="file" id="replaceFile" name="file" />
-        <button type="submit">Substituir (PUT)</button>
-      </form>
-    </section>
+      <!-- Link normal (abre no browser) -->
+      <a class="btn secondary" href="index.html">Abrir index (mesma página)</a>
+    </div>
 
-    <section class="list">
-      <h2>Ficheiros</h2>
-      <button id="refreshBtn">Atualizar lista</button>
-      <ul id="fileList"></ul>
-    </section>
+    <hr>
+
+    <h2>Nota sobre compatibilidade</h2>
+    <ul>
+      <li>O atributo <code>download</code> é suportado pela maioria dos browsers modernos para URLs do mesmo domínio.</li>
+      <li>Se o servidor enviar <code>Content-Disposition: attachment; filename="index.html"</code>, o browser irá forçar o download mesmo sem o atributo <code>download</code>.</li>
+      <li>Se estiver a testar localmente, use um servidor estático (por exemplo <code>python3 -m http.server</code>) em vez de abrir o ficheiro diretamente via <code>file://</code>.</li>
+    </ul>
+
+    <h2>Exemplo de comando para servir</h2>
+    <pre><code>python3 -m http.server 8000</code></pre>
+    <p>Abra <a href="./">http://localhost:8000/</a> no seu browser e clique em "Descarregar este index".</p>
   </main>
 
-  <script>
-    const fileList = document.getElementById('fileList');
-    const refreshBtn = document.getElementById('refreshBtn');
-
-    async function fetchFiles() {
-      fileList.innerHTML = '<li>Carregando...</li>';
-      const res = await fetch('/files');
-      const files = await res.json();
-      if (!Array.isArray(files)) {
-        fileList.innerHTML = '<li>Erro ao obter lista</li>';
-        return;
-      }
-      if (files.length === 0) {
-        fileList.innerHTML = '<li>Sem ficheiros</li>';
-        return;
-      }
-      fileList.innerHTML = '';
-      files.forEach(f => {
-        const li = document.createElement('li');
-        li.innerHTML = `
-          <strong>${escapeHtml(f.name)}</strong>
-          <span class="meta">(${formatBytes(f.size)} - ${new Date(f.mtime).toLocaleString()})</span>
-          <div class="actions">
-            <a class="btn" href="/files/${encodeURIComponent(f.name)}" download>Download</a>
-            <button class="btn del" data-name="${escapeHtml(f.name)}">Apagar</button>
-          </div>
-        `;
-        fileList.appendChild(li);
-      });
-
-      // attach delete handlers
-      document.querySelectorAll('button.del').forEach(btn =>
-        btn.addEventListener('click', async (e) => {
-          const name = e.currentTarget.dataset.name;
-          if (!confirm(`Apagar "${name}"?`)) return;
-          const resp = await fetch('/files/' + encodeURIComponent(name), { method: 'DELETE' });
-          const data = await resp.json();
-          if (resp.ok) {
-            alert(data.message || 'Apagado');
-            fetchFiles();
-          } else {
-            alert('Erro: ' + (data.error || resp.statusText));
-          }
-        })
-      );
-    }
-
-    // upload (POST)
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('fileInput');
-      if (!input.files.length) return alert('Escolha um ficheiro');
-      const fd = new FormData();
-      fd.append('file', input.files[0]);
-      const resp = await fetch('/files', { method: 'POST', body: fd });
-      const data = await resp.json();
-      if (resp.ok) {
-        alert('Enviado: ' + data.file.name);
-        input.value = '';
-        fetchFiles();
-      } else {
-        alert('Erro: ' + (data.error || resp.statusText));
-      }
-    });
-
-    // replace (PUT)
-    document.getElementById('replaceForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const target = document.getElementById('targetName').value.trim();
-      const fileInput = document.getElementById('replaceFile');
-      if (!target) return alert('Indique o nome que quer substituir');
-      if (!fileInput.files.length) return alert('Escolha o ficheiro que substituirá o existente');
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      const resp = await fetch('/files/' + encodeURIComponent(target), { method: 'PUT', body: fd });
-      const data = await resp.json();
-      if (resp.ok) {
-        alert(data.message);
-        document.getElementById('targetName').value = '';
-        fileInput.value = '';
-        fetchFiles();
-      } else {
-        alert('Erro: ' + (data.error || resp.statusText));
-      }
-    });
-
-    refreshBtn.addEventListener('click', fetchFiles);
-
-    // util
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-    }
-    function formatBytes(bytes) {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B','KB','MB','GB','TB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // fetch at start
-    fetchFiles();
-  </script>
+  <footer>
+    <small>Gerado em exemplo — se quiser, posso mostrar também como configurar um servidor que envia o header <code>Content-Disposition</code> (por exemplo, em Python ou Node.js).</small>
+  </footer>
 </body>
 </html>
-

@@ -34,3 +34,8 @@
 		public:
 			virtual const char *what()const throw();
 	};
+	class   Forbidden_403: public std::exception
+	{
+		public:
+			virtual const char *what()const throw();
+	};

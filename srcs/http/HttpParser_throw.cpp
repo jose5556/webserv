@@ -20,6 +20,13 @@ const char *Badd_Request_400::what(void) const throw()
 	return "Bad Request";
 };
 
+const char *Forbidden_403::what(void) const throw()
+{
+	HttpParser::_pach_info = "/403.html";
+	HttpParser::_http_page_error = 403;
+	return "Forbidden";
+};
+
 const char *Not_Implemented_501::what(void) const throw()
 {
 	HttpParser::_pach_info = "/501.html";

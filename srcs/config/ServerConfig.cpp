@@ -72,7 +72,7 @@ void	ServerConfig::parse_server(std::istream& server_file)
 		}
 		else if (line.compare(0, 4, "root") == 0)
 		{
-			this->setRoot(formatPath(trim_whitespace(line.substr(4))));
+			this->setRoot(trim_whitespace(line.substr(4)));
 			if (this->getRoot() == "")
 			{
 				throw Config::BadConfigException("Empty field (root): ", line);
@@ -205,9 +205,8 @@ void	ServerConfig::setOneErrorPage(std::string error_page_str)
 		throw Config::BadConfigException("Invalid Error Page in configuration file: ", error_page_str);
 	}
 
-	const std::string page_path = trim_whitespace(error_page_str.substr(3));
-
-	this->_error_pages[error_num] = formatPath(page_path);
+	this->_error_pages[error_num] = trim_whitespace(error_page_str.substr(3));
+	validatePath(this->_error_pages[error_num], false);
 }
 
 void	ServerConfig::setOneLocationConfig(LocationConfig* loc)
@@ -275,6 +274,7 @@ void	ServerConfig::setIndex(std::string index)
 
 void	ServerConfig::setRoot(std::string root)
 {
+	validatePath(root, false);
 	this->_root = root;
 }
 
