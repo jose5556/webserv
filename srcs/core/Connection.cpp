@@ -31,7 +31,7 @@ Connection::Connection(const Connection &copy) {
 
 bool	Connection::readRequest() {
 
-	char	buffer[1024];
+	char	buffer[4096];
 	ssize_t	bytesRead;
 
 	while ((bytesRead = read(_fd, buffer, sizeof(buffer))) > 0) {
@@ -51,7 +51,7 @@ bool	Connection::readRequest() {
 }
 
 bool	Connection::writeResponse() {
-	
+
 	ssize_t	bytesWritten;
 
 	if (_writeBuffer.empty())
