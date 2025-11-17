@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventLoop.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cereais <cereais@student.42.fr>            +#+  +:+       +#+        */
+/*   By: joseoliv <joseoliv@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/13 18:44:16 by cereais           #+#    #+#             */
-/*   Updated: 2025/10/28 20:49:00 by cereais          ###   ########.fr       */
+/*   Updated: 2025/11/11 11:48:00 by joseoliv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,5 +43,6 @@ private:
 
 	std::vector<PollEntry> _pollEntries;
 
-	void closeConnection(PollEntry &entry);
+	void	closeConnection(PollEntry &entry);
+	void	removeClosedEntries(std::vector<PollEntry> &entries);
 };

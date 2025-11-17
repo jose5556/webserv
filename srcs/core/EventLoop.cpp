@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EventLoop.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: cereais <cereais@student.42.fr>            +#+  +:+       +#+        */
+/*   By: joseoliv <joseoliv@student.42porto.com>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/25 19:35:11 by joseoliv          #+#    #+#             */
-/*   Updated: 2025/10/28 20:54:21 by cereais          ###   ########.fr       */
+/*   Updated: 2025/11/11 12:34:49 by joseoliv         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 volatile sig_atomic_t stopServer = 0;
 
 static void signalHandler(int signum) {
+
 	if (signum == SIGINT) {
 		std::cout << "\nShutting down the server gracefully...\n"
 				  << std::endl;
@@ -25,7 +26,9 @@ static void signalHandler(int signum) {
 	}
 }
 
-EventLoop::EventLoop() { _pollEntries.reserve(1024); }
+EventLoop::EventLoop() { 
+	_pollEntries.reserve(1024); 
+}
 
 EventLoop::~EventLoop() {
 
@@ -39,6 +42,7 @@ EventLoop::~EventLoop() {
 }
 
 void EventLoop::addListeningSocket(const Socket *socket) {
+
 	struct pollfd pfd;
 	pfd.fd = socket->getFd();
 	pfd.events = POLLIN;
@@ -50,6 +54,19 @@ void EventLoop::addListeningSocket(const Socket *socket) {
 	entry.socketAddr = socket->getAddr();
 	entry.port = ntohs(socket->getAddr().sin_port);
 	_pollEntries.push_back(entry);
+}
+
+// remove entries with fd < 0 and free associated Connection
+void EventLoop::removeClosedEntries(std::vector<PollEntry> &entries) {
+	std::vector<PollEntry> remaining;
+	remaining.reserve(entries.size());
+	for (size_t i = 0; i < entries.size(); ++i) {
+		if (entries[i].pfd.fd >= 0)
+			remaining.push_back(entries[i]);
+		else if (entries[i].conn)
+			delete entries[i].conn;
+	}
+	entries.swap(remaining);
 }
 
 void EventLoop::run() {
@@ -70,8 +87,7 @@ void EventLoop::run() {
 		pfdArray.reserve(_pollEntries.size());
 		for (size_t i = 0; i < _pollEntries.size(); ++i) {
 
-			if (_pollEntries[i].pfd.fd >= 0)
-			{
+			if (_pollEntries[i].pfd.fd >= 0) {
 				pfdArray.push_back(_pollEntries[i].pfd);
 				indexMap.push_back(i);
 			}
@@ -81,9 +97,7 @@ void EventLoop::run() {
 			int errorCode = poll(&pfdArray[0], pfdArray.size(), 5000);
 			if (errorCode < 0) {
 				if (errno == EINTR)
-				{
 					break;
-				}
 				perror("poll");
 				break;
 			}
@@ -97,7 +111,7 @@ void EventLoop::run() {
 			PollEntry &entry = _pollEntries[i];
 
 			if (entry.pfd.revents & (POLLHUP | POLLERR | POLLNVAL)) {
-				std::cout << "Strange error, but client was brutally and tragically disconected :(" << std::endl;
+				std::cout << "Strange error, client was brutally disconected :(" << std::endl;
 				closeConnection(entry);
 				entry.pfd.fd = -1;
 				continue;
@@ -124,29 +138,28 @@ void EventLoop::run() {
 						clientEntry.pfd = pfd;
 						clientEntry.conn = conn;
 						clientEntry.socketAddr = entry.socketAddr;
-						clientEntry.port = entry.port; // Copy the port from the listening socket's PollEntry
+						clientEntry.port = entry.port;
 
 						newClients.push_back(clientEntry);
 						std::cout << "New client accepted: fd " << clientFd << std::endl;
 					}
-
 				} else {
-
 					if (!entry.conn->readRequest()) {
 						closeConnection(entry);
 						entry.pfd.fd = -1;
-					}
-					else if (entry.conn->isRequestComplete())
-					{
-						// std::cout << entry.conn->getReadBuffer() << std::endl;
+					} else if (entry.conn->isRequestComplete()) {
+						std::cout << "---------------------------------------------" << std::endl;
+						std::cout << entry.port << std::endl;
 						entry.conn->setWriteBuffer(HttpResponse::request_and_response(entry.conn->getReadBuffer(), entry.port));
 						entry.conn->setReadBuffer(""); // clear buffer for the next read operation.
 						entry.pfd.events = POLLOUT;
+						//
 					}
 				}
 			}
 
 			if (entry.pfd.revents & POLLOUT) {
+
 				if (entry.conn && !entry.conn->writeResponse()) {
 
 					closeConnection(entry);
@@ -161,16 +174,7 @@ void EventLoop::run() {
 			_pollEntries.insert(_pollEntries.end(), newClients.begin(), newClients.end());
 
 		// remove entries with fd < 0 (closed)
-		std::vector<PollEntry> remaining;
-		remaining.reserve(_pollEntries.size());
-		for (size_t k = 0; k < _pollEntries.size(); ++k)
-		{
-			if (_pollEntries[k].pfd.fd >= 0)
-				remaining.push_back(_pollEntries[k]);
-			else if (_pollEntries[k].conn)
-				delete _pollEntries[k].conn;
-		}
-		_pollEntries.swap(remaining);
+		removeClosedEntries(_pollEntries);
 	}
 }
 
