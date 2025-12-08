@@ -138,7 +138,7 @@ std::string HttpResponse::open_static_file(std::string file)
 
 	request += "Access-Control-Allow-Methods: POST, OPTIONS\r\n";
 
-	request += "Access-Control-Allow-Headers\r\n";
+	request += "Access-Control-Allow-Headers: *\r\n";
 
 	request += "Connection: close\r\n\n";
 
